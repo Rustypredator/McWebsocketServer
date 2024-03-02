@@ -1,0 +1,11 @@
+# PlayerPosWebsockets default Config
+
+# This will define wich port the websocket server will be opened at.
+Port: 8888
+
+# Send interval (in ms) -> 1000ms = 1 second
+# This is only for modules configured in Broadcast mode.
+Interval: 1000
+
+# debug options:
+debug: false
