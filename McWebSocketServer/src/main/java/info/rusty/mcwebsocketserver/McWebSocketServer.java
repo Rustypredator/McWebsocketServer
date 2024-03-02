@@ -13,6 +13,7 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 public class McWebSocketServer extends JavaPlugin {
@@ -22,10 +23,17 @@ public class McWebSocketServer extends JavaPlugin {
 	private Server server;
 	private ConsoleCommandSender console;
 	private ConsoleLog log;
+	private InetAddress ip;
+	private int port;
+	private InetSocketAddress address;
+	private int pluginId = 21187;
+	private String dataFolder;
+
 	@Override
 	public void onEnable() {
 		// default config
 		this.saveDefaultConfig();
+		this.dataFolder = this.getDataFolder().toString();
 		// init server:
 		this.server = this.getServer();
 		// init console:
@@ -37,15 +45,14 @@ public class McWebSocketServer extends JavaPlugin {
 		// init bstats
 		if (this.getConfig().getBoolean("bstats")) {
 			this.log.info("Enabling bStats", null);
-			int pluginId = 21187;
-			this.metrics = new Metrics(this, pluginId);
+			this.metrics = new Metrics(this, this.pluginId);
 		}
 		//init server:
-		InetSocketAddress port = new InetSocketAddress(this.getConfig().getInt("Port"));
-		//print init info:
-		printInitInfo(this.getConfig().getInt("Port"), this.getDataFolder().toString(), this.console);
+		this.port = this.getConfig().getInt("port");
+		this.ip = com.google.common.net.InetAddresses.forString(this.getConfig().getString("ip"));
+		this.address = new InetSocketAddress(this.ip, this.port);
 		//create local wsserver:
-		this.ws = new PlayerPosServer(port, this.console, this.debug, this.log);
+		this.ws = new PlayerPosServer(this.address, this.log);
 		ws.start();
 		this.getServer().getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
 			@Override
@@ -85,10 +92,6 @@ public class McWebSocketServer extends JavaPlugin {
 			e.printStackTrace();
 		}
 		this.log.success("Shutdown complete!", null);
-	}
-
-	private void printInitInfo(int port, String dataFolder, ConsoleCommandSender console) {
-		this.log.success("Creating Server on " + port, null);
 	}
 }
 
@@ -139,15 +142,11 @@ class ConsoleLog {
 
 class PlayerPosServer extends WebSocketServer {
 	private InetSocketAddress port;
-	private ConsoleCommandSender console;
-	private boolean debug;
 	private ConsoleLog log;
 
-	public PlayerPosServer(InetSocketAddress port, ConsoleCommandSender console, boolean debug, ConsoleLog log) {
+	public PlayerPosServer(InetSocketAddress port, ConsoleLog log) {
 		super(port);
 		this.port = port;
-		this.console = console;
-		this.debug = debug;
 		this.log = log;
 	}
 

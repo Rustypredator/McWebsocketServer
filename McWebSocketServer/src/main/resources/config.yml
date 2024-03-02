@@ -6,4 +6,5 @@ debug: false
 # By Default this server only listens on the local network.
 # If you want external access, you need to change the IP to 0.0.0.0 or your actual IP
 # Beware that this will expose the server to other machines in your network (Maybe even the Internet) and you should take the necessary precautions.
-Port: 8888
+ip: 127.0.0.1
+port: 8888
