@@ -23,5 +23,12 @@ Set the mode of the module:
 - Broadcast: Sends the data on a specific interval, regardless of incoming messages.
 - OnDemand: Only responds to the correct incoming messages with the data, otherwise this data is not sent.  
 
+## Versions
+
+### Spigot/Bukkit/Paper
+|MC Version(s)|Plugin Version|Link|
+|---|---|---|
+|1.16 - 1.20.4|0.0.3|[0.0.3](https://github.com/Rustypredator/McWebsocketServer/tree/spigot-0.0.3)|
+
 ## 3rd Party Software
 [Websocket Library](https://github.com/TooTallNate/Java-WebSocket)
