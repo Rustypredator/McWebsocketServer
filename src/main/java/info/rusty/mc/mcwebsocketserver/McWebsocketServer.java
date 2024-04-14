@@ -1,75 +1,45 @@
 package info.rusty.mc.mcwebsocketserver;
 
-import org.java_websocket.WebSocket;
-import org.java_websocket.handshake.ClientHandshake;
-import org.java_websocket.server.WebSocketServer;
+import net.minecraft.server.MinecraftServer;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
+import org.quiltmc.qsl.lifecycle.api.event.ServerLifecycleEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
 public class McWebsocketServer implements ModInitializer {
-	// This logger is used to write text to the console and the log file.
-	// It is considered best practice to use your mod name as the logger's name.
-	// That way, it's clear which mod wrote info, warnings, and errors.
 	public static final Logger LOGGER = LoggerFactory.getLogger("McWebsocketServer");
-	private McWsSServer server;
+	private static McWsServer wsserver;
+	private static MinecraftServer mcServer;
 
 	@Override
 	public void onInitialize(ModContainer mod) {
-		// Load config variables
-		InetAddress serverAddress = com.google.common.net.InetAddresses.forString(McWebsocketServerConfig.INSTANCE.serverAddress.value());
-		int serverPort = McWebsocketServerConfig.INSTANCE.serverPort.value();
-		//Init WS Server:
-		this.server = new McWsSServer(new InetSocketAddress(serverAddress, serverPort));
-		server.start();
-		LOGGER.info("Server started on " + serverAddress + ":" + serverPort);
-	}
-}
-
-class McWsSServer extends WebSocketServer {
-	public static final Logger LOGGER = LoggerFactory.getLogger("McWebsocketServer");
-	private InetSocketAddress address;
-
-	public McWsSServer(InetSocketAddress address) {
-		super(address);
-		this.address = address;
+		registerServerStarted();
+		ServerLifecycleEvents.STOPPING.register(server -> {
+            try {
+                wsserver.stop();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        });
 	}
 
-	@Override
-	public void onOpen(WebSocket conn, ClientHandshake handshake) {
-		if (McWebsocketServerConfig.INSTANCE.debug.value()) {
-			LOGGER.info("mew Client connected!");
-		}
+	public void registerServerStarted() {
+		ServerLifecycleEvents.READY.register(server -> {
+			mcServer = server;
+			// Load config variables
+			InetAddress serverAddress = com.google.common.net.InetAddresses.forString(McWebsocketServerConfig.INSTANCE.serverAddress.value());
+			int serverPort = McWebsocketServerConfig.INSTANCE.serverPort.value();
+			//Init WS Server:
+			wsserver = new McWsServer(new InetSocketAddress(serverAddress, serverPort));
+			wsserver.start();
+			LOGGER.info("Server started on " + serverAddress + ":" + serverPort);
+		});
 	}
 
-	@Override
-	public void onClose(WebSocket conn, int code, String reason, boolean remote) {
-		if (McWebsocketServerConfig.INSTANCE.debug.value()) {
-			LOGGER.info("Client left!");
-		}
-	}
-
-	@Override
-	public void onMessage(WebSocket conn, String message) {
-		if (McWebsocketServerConfig.INSTANCE.debug.value()) {
-			LOGGER.info("Received Message: " + message);
-		}
-	}
-
-	@Override
-	public void onError(WebSocket conn, Exception ex) {
-		if (conn != null) {
-			// some errors like port binding failed may not be assignable to a specific websocket
-		}
-		LOGGER.trace("an error occurred on connection", ex);
-	}
-
-	@Override
-	public void onStart() {
-		LOGGER.info("Server started");
+	public static MinecraftServer getServer() {
+		return mcServer;
 	}
 }
