@@ -28,7 +28,7 @@ Set the mode of the module:
 ### Spigot/Bukkit/Paper
 |MC Version(s)|Plugin Version|Link|
 |---|---|---|
-|1.16 - 1.20.4|0.0.3|[0.0.3](https://github.com/Rustypredator/McWebsocketServer/tree/spigot-0.0.3)|
+|1.16 - 1.20.4|0.0.3|[0.0.3](https://github.com/Rustypredator/McWebsocketServer/tree/e6caa6c8a7d2690a5771e4c7e0045d7b6e341165)|
 
 ## 3rd Party Software
 [Websocket Library](https://github.com/TooTallNate/Java-WebSocket)
