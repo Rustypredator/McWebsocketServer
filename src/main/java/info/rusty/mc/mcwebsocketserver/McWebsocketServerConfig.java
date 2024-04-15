@@ -13,16 +13,18 @@ import org.quiltmc.loader.api.config.v2.QuiltConfig;
  */
 public class McWebsocketServerConfig extends ReflectiveConfig {
 	public static final McWebsocketServerConfig INSTANCE = QuiltConfig.create("McWebsocketServer", "main", McWebsocketServerConfig.class);
-	@Comment("The address where the server should listen on. Default is 127.0.0.1 ONLY NUMBERS AND DOTS ALLOWED, DO NOT USE localhost or similar!")
+	@Comment("The address where the server should listen on. ONLY NUMBERS AND DOTS ALLOWED, DO NOT USE localhost or similar!")
 	@SerializedName("server_address")
 	public final TrackedValue<String> serverAddress = this.value("127.0.0.1");
-	@Comment("The port where the server should listen on. Default is 25566")
+	@Comment("The port where the server should listen on.")
 	@SerializedName("server_port")
 	public final TrackedValue<Integer> serverPort = this.value(25566);
-	@Comment("The debug mode of the server. Default is false")
+	@Comment("The debug mode of the server.")
 	@SerializedName("debug")
 	public final TrackedValue<Boolean> debug = this.value(false);
-
+	@Comment("The delay in seconds between broadcasts. 0 means no delay. Don't set it to low, as it can cause lag!")
+	@SerializedName("broadcast_delay")
+	public final TrackedValue<Integer> broadcastDelay = this.value(10);
 	@Comment("The Module Config. True/false to enable or disable the module. Default is false.")
 	@SerializedName("modules")
 	public final TrackedValue<ValueMap<String>> modules = this.map("")
