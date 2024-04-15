@@ -1,6 +1,7 @@
 package info.rusty.mc.mcwebsocketserver;
 
 import net.minecraft.server.MinecraftServer;
+import org.quartz.SchedulerException;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
 import org.quiltmc.qsl.lifecycle.api.event.ServerLifecycleEvents;
@@ -19,8 +20,8 @@ public class McWebsocketServer implements ModInitializer {
 		registerServerStarted();
 		ServerLifecycleEvents.STOPPING.register(server -> {
             try {
-                wsserver.stop();
-            } catch (InterruptedException e) {
+                wsserver.shutdown();
+            } catch (InterruptedException | SchedulerException e) {
                 throw new RuntimeException(e);
             }
         });
