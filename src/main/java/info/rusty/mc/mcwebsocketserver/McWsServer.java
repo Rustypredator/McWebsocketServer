@@ -6,7 +6,6 @@ import info.rusty.mc.mcwebsocketserver.modules.PlayerPositions;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +19,7 @@ class McWsServer extends WebSocketServer {
 	private Map<String, List<WebSocket>> subscribers;
 	private McWsServerBroadcastScheduler scheduler;
 
-	public void shutdown() throws InterruptedException, SchedulerException {
+	public void shutdown() throws InterruptedException {
 		scheduler.shutdown(); //stop the scheduler
 		this.stop(); //stop the websocket server
 	}
