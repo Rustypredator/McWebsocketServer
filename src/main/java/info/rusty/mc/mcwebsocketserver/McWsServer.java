@@ -1,5 +1,6 @@
 package info.rusty.mc.mcwebsocketserver;
 
+import com.google.common.base.CaseFormat;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import info.rusty.mc.mcwebsocketserver.modules.PlayerPositions;
@@ -10,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +54,10 @@ class McWsServer extends WebSocketServer {
 		for (Map.Entry<String, List<WebSocket>> entry : subscribers.entrySet()) {
 			List<WebSocket> currentSubscribers = entry.getValue();
 			if (currentSubscribers.contains(conn)) {
+				if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+					String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+					LOGGER.info("Removing subscriber "+Ip+" from module: " + entry.getKey());
+				}
 				currentSubscribers.remove(conn);
 				subscribers.put(entry.getKey(), currentSubscribers);
 			}
@@ -62,6 +68,10 @@ class McWsServer extends WebSocketServer {
 	public void onMessage(WebSocket conn, String message) {
 		//discard empty messages:
 		if (message.isEmpty()) {
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+				LOGGER.info("Received empty Message from "+Ip);
+			}
 			return;
 		}
 		// debug info
@@ -69,34 +79,46 @@ class McWsServer extends WebSocketServer {
 			LOGGER.info("Received Message: " + message);
 		}
 		// Handle message.
-		// If the message is not in json format, discard it.
-        try {
-            if (!JSONUtils.isJSONValid(message)) {
-                return;
-            }
-        } catch (Exception e) {
-            LOGGER.error("Error while parsing JSON", e);
-            return;
-        }
 		// If the message is in json format, parse it and handle it.
 		Gson gson = new Gson();
-		JsonObject messageJson = gson.fromJson(message, JsonObject.class); // Parse the message into a JSON object.
-		String module = messageJson.get("module").getAsString(); // Get the module name.
-		String mode = messageJson.get("mode").getAsString(); // Get the mode.
+		JsonObject messageJson;
+		try {
+			messageJson = gson.fromJson(message, JsonObject.class); // Parse the message into a JSON object.
+		} catch (Exception e) {
+			LOGGER.info("Error while parsing JSON message.", e);
+			LOGGER.info("Message: " + message);
+			return;
+		}
+		String module, mode;
+		try {
+			module = messageJson.get("module").getAsString(); // Get the module name.
+		} catch (Exception e) {
+			LOGGER.info("Error while getting module name from message.", e);
+			LOGGER.info("Message: " + message);
+			return;
+		}
+		try {
+			mode = messageJson.get("mode").getAsString(); // Get the mode.
+		} catch (Exception e) {
+			LOGGER.info("Error while getting mode from message.", e);
+			LOGGER.info("Message: " + message);
+			mode = "once"; // Default mode.
+		}
 		//check if module is enabled:
 		boolean enabled = Boolean.parseBoolean(McWebsocketServerConfig.INSTANCE.modules.value().get(module));
 		if (enabled) {
 			moduleSwitcher(module, mode, conn, messageJson);
 		} else {
-			conn.send("Module " + module + " is not enabled.");
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+				LOGGER.info("Client "+Ip+" tried querying disabled module: " + module);
+			}
+			conn.send(new JsonMessageBuilder("success=false,error=Module is not enabled.").toJson());
 		}
 	}
 
 	@Override
 	public void onError(WebSocket conn, Exception ex) {
-		if (conn != null) {
-			// some errors like port binding failed may not be assignable to a specific websocket
-		}
 		LOGGER.trace("an error occurred on connection", ex);
 	}
 
@@ -106,79 +128,143 @@ class McWsServer extends WebSocketServer {
 	}
 
 	public void moduleSwitcher(String module, String mode, WebSocket conn, JsonObject message) {
+		List<String> whitelist;
 		switch (module) {
 			case "player_positions":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerPositionsAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerPositionsAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_positions module.
 				if (mode.equals("once")) {
+					if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+						String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+						LOGGER.info("Client "+Ip+" requested one-time info: " + module);
+					}
 					PlayerPositions ppm = new PlayerPositions();
 					ppm.handleMessage(conn, message);
 				} else if (mode.equals("subscribe")) {
-					//Update subscribers list:
-					List<WebSocket> currentSubscribers = subscribers.get("player_positions");
-					currentSubscribers.add(conn);
-					subscribers.put("player_positions", currentSubscribers);
+					this.subscribe(conn, module);
 				}
 				break;
 			case "player_chat":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerChatAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerChatAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_chat module.
 				break;
 			case "player_join_leave":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerJoinLeaveAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerJoinLeaveAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_join_leave module.
 				break;
 			case "player_death":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerDeathAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerDeathAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_death module.
 				break;
 			case "player_advancement":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerAdvancementAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerAdvancementAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_advancement module.
 				break;
 			case "player_inventory":
 				//check if IP is allowed:
-				if (!McWebsocketServerConfig.INSTANCE.playerInventoryAllowedIps.value().contains(conn.getRemoteSocketAddress().getAddress().getHostAddress())) {
-					conn.send("Your IP is not whitelisted for this module.");
-					return;
-				}
+				whitelist = McWebsocketServerConfig.INSTANCE.playerInventoryAllowedIps.value();
+				if (!this.whitelistCheck(conn, module, whitelist)) {return;}
 				// Handle player_inventory module.
 				break;
 			default:
-				// Handle unknown module.
+				this.sendNotWhitelisted(conn);
 				break;
 		}
 	}
 
-	public void publicBroadcast() {
-		// Broadcast message to all clients.
-		this.broadcast("Public Broadcast");
-		//get all modules that are configured to be broadcast:
-		Map<String, String> broadcastModules = McWebsocketServerConfig.INSTANCE.broadcastModules.value();
+	public void keepalive() {
+		//skip if no one connected:
+		if (this.getConnections().isEmpty()) {
+			LOGGER.debug("No one connected. Skipping keepalive broadcast.");
+			return;
+		}
+		this.broadcast(new JsonMessageBuilder("keepalive=true").toJson());
 	}
 
-	public void subscriberBroadcast() {
-		// Broadcast message to individual subscribers.
-		this.broadcast("Subscriber Broadcast");
+	public void subscriberBroadcast(String module) {
+		//skip if no one connected:
+		if (this.getConnections().isEmpty()) {
+			LOGGER.debug("No one connected. Skipping subscriber broadcast.");
+			return;
+		}
+		// If Module == null then broadcast all enabled modules.
+		if (module == null) {
+			//get all modules that are configured to be broadcast:
+			Map<String, String> modules = McWebsocketServerConfig.INSTANCE.broadcastModules.value();
+			for (Map.Entry<String, String> entry : modules.entrySet()) {
+				if (entry.getValue().equals("true")) {
+					//get all subscribers for this module:
+					List<WebSocket> currentSubscribers = subscribers.get(entry.getKey());
+					for (WebSocket subscriber : currentSubscribers) {
+						subscriber.send(entry.getKey() + " Subscriber Broadcast");
+					}
+				}
+			}
+		} else {
+			//get all subscribers for this module:
+			try {
+				List<WebSocket> currentSubscribers = subscribers.get(module);
+				for (WebSocket subscriber : currentSubscribers) {
+					subscriber.send(module + " Subscriber Broadcast");
+				}
+			} catch (Exception e) {
+				LOGGER.error("Error while broadcasting to subscribers", e);
+			}
+		}
+	}
+
+	private boolean whitelistCheck(WebSocket conn, String module, List<String> whitelist) {
+		String ipAddress = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+		if (whitelist.contains(ipAddress) || whitelist.contains("*")) {
+			return true;
+		}
+		this.sendNotWhitelisted(conn);
+		if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+			String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+			LOGGER.info("Client "+Ip+" failed Whitelist Check for module: " + module);
+		}
+		return false;
+	}
+
+	private void subscribe(WebSocket conn, String module) {
+		// Initialize subscribers list if it is null.
+		if (subscribers == null) {
+			subscribers = new HashMap<>();
+		}
+		// Create empty List if the module is not present in the subscribers list.
+        subscribers.computeIfAbsent(module, k -> new java.util.ArrayList<>());
+		// Get Current Subscribers
+		List<WebSocket> currentSubscribers = subscribers.get(module);
+		// Add the new subscriber to the list.
+		currentSubscribers.add(conn);
+		// Update the subscribers list.
+		subscribers.put(module, currentSubscribers);
+		// Check if the subscriber was added successfully.
+		String Ip = conn.getRemoteSocketAddress().getAddress().getHostAddress();
+		if (subscribers.get(module).contains(conn)) {
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				LOGGER.info("Adding Subscriber "+Ip+" for module: " + module);
+			}
+			conn.send(new JsonMessageBuilder("success=true,message=Subscription Successful.").toJson());
+		} else {
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				LOGGER.info("Subscription for Client "+Ip+" to module: " + module +  " failed.");
+			}
+			conn.send(new JsonMessageBuilder("success=false,error=Subscription Failed.").toJson());
+		}
+	}
+
+	private void sendNotWhitelisted(WebSocket conn) {
+		conn.send(new JsonMessageBuilder("success=false,error=Your IP is not whitelisted for this module.").toJson());
 	}
 }

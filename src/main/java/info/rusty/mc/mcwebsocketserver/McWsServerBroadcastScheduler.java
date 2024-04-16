@@ -1,10 +1,14 @@
 package info.rusty.mc.mcwebsocketserver;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 class McWsServerBroadcastScheduler {
+	public static final Logger LOGGER = LoggerFactory.getLogger("McWebsocketServer");
 	private final McWsServer wsServer;
 	private final int delay;
 	private ScheduledExecutorService broadcastJob;
@@ -24,6 +28,8 @@ class McWsServerBroadcastScheduler {
 	}
 
 	public void init() throws InterruptedException {
+		LOGGER.info("Starting broadcast scheduler with delay of " + delay + " seconds");
+
 		broadcastJob = Executors.newScheduledThreadPool(1);
 
 		Runnable broadcastTask = broadcastTask();
@@ -33,7 +39,7 @@ class McWsServerBroadcastScheduler {
 
 	private Runnable broadcastTask() {
 		return () -> {
-			wsServer.publicBroadcast();
+			wsServer.keepalive();
 			wsServer.subscriberBroadcast();
 		};
 	}
