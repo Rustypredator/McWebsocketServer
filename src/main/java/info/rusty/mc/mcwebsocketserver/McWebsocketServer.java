@@ -1,10 +1,10 @@
 package info.rusty.mc.mcwebsocketserver;
 
 import net.minecraft.server.MinecraftServer;
-import org.quartz.SchedulerException;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
 import org.quiltmc.qsl.lifecycle.api.event.ServerLifecycleEvents;
+import org.quiltmc.qsl.networking.api.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.net.InetAddress;
@@ -21,13 +21,14 @@ public class McWebsocketServer implements ModInitializer {
 		ServerLifecycleEvents.STOPPING.register(server -> {
             try {
                 wsserver.shutdown();
-            } catch (InterruptedException | SchedulerException e) {
+            } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         });
 	}
 
 	public void registerServerStarted() {
+		//Server started event
 		ServerLifecycleEvents.READY.register(server -> {
 			mcServer = server;
 			// Load config variables
@@ -38,6 +39,19 @@ public class McWebsocketServer implements ModInitializer {
 			wsserver.start();
 			LOGGER.info("Server started on " + serverAddress + ":" + serverPort);
 		});
+		//Player Join event
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			//send player join message to all subscribers
+			wsserver.subscriberBroadcast("player_join_leave");
+		});
+		//Player Disconnect event
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			//send player leave message to all subscribers
+			wsserver.subscriberBroadcast("player_join_leave");
+		});
+		//Player Chat event
+		//Player Death event
+		//Player Advancement event
 	}
 
 	public static MinecraftServer getServer() {
