@@ -47,22 +47,19 @@ public class McWebsocketServerConfig extends ReflectiveConfig {
 		.put("player_inventory", "false")
 		.build();
 
-	@Comment("Allowed IP Config for player_positions. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
+	@Comment("Allowed IP Config for Modules. this can have multiple allowed IPs or * for all IPs")
+	@Comment("Using * allows any client to subscribe to the module. This is not recommended, as it can cause a lot of traffic, and may leak sensitive information!")
+	@Comment("For now, partial wildcards like 192.168.178.* are not supported!")
 	@SerializedName("player_positions_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerPositionsAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
-	@Comment("Allowed IP Config for player_chat. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
 	@SerializedName("player_chat_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerChatAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
-	@Comment("Allowed IP Config for player_join_leave. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
 	@SerializedName("player_join_leave_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerJoinLeaveAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
-	@Comment("Allowed IP Config for player_death. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
 	@SerializedName("player_death_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerDeathAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
-	@Comment("Allowed IP Config for player_advancement. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
 	@SerializedName("player_advancement_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerAdvancementAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
-	@Comment("Allowed IP Config for player_inventory. this can have multiple allowed IPs or * for all IPs (Using * is not recommended, as every connected client can see the informations.)")
 	@SerializedName("player_inventory_allowed_ips")
 	public final TrackedValue<ValueList<String>> playerInventoryAllowedIps = this.list("","127.0.0.1", "192.168.178.1");
 }
