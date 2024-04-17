@@ -28,7 +28,9 @@ class McWsServerBroadcastScheduler {
 	}
 
 	public void init() throws InterruptedException {
-		LOGGER.info("Starting broadcast scheduler with delay of " + delay + " seconds");
+		if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+			LOGGER.info("Starting broadcast scheduler with delay of " + delay + " seconds");
+		}
 
 		broadcastJob = Executors.newScheduledThreadPool(1);
 
@@ -39,8 +41,11 @@ class McWsServerBroadcastScheduler {
 
 	private Runnable broadcastTask() {
 		return () -> {
-			wsServer.keepalive();
-			wsServer.subscriberBroadcast();
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				LOGGER.info("Broadcast Task running");
+			}
+			// Broadcast modules that don't rely on events:
+			wsServer.subscriberBroadcast("player_positions");
 		};
 	}
 }

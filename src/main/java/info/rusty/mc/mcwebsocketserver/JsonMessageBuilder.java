@@ -1,6 +1,7 @@
 package info.rusty.mc.mcwebsocketserver;
 
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -27,7 +28,7 @@ public class JsonMessageBuilder {
 	}
 
 	public String toJson() {
-		Gson j = new Gson();
+		Gson j = new GsonBuilder().disableHtmlEscaping().create();
 		return j.toJson(this.message);
 	}
 }

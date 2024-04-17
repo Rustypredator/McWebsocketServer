@@ -1,5 +1,7 @@
 package info.rusty.mc.mcwebsocketserver;
 
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
+import net.minecraft.network.message.OutgoingMessage;
 import net.minecraft.server.MinecraftServer;
 import org.quiltmc.loader.api.ModContainer;
 import org.quiltmc.qsl.base.api.entrypoint.ModInitializer;
@@ -7,6 +9,8 @@ import org.quiltmc.qsl.lifecycle.api.event.ServerLifecycleEvents;
 import org.quiltmc.qsl.networking.api.ServerPlayConnectionEvents;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.net.BindException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 
@@ -50,6 +54,10 @@ public class McWebsocketServer implements ModInitializer {
 			wsserver.subscriberBroadcast("player_join_leave");
 		});
 		//Player Chat event
+		ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
+			//send chat message to all subscribers
+			wsserver.subscriberBroadcast("player_chat");
+		});
 		//Player Death event
 		//Player Advancement event
 	}

@@ -79,6 +79,10 @@ class McWsServer extends WebSocketServer {
 			LOGGER.info("Received Message: " + message);
 		}
 		// Handle message.
+		if (message.equals("ping")) {
+			conn.send("pong");
+			return;
+		}
 		// If the message is in json format, parse it and handle it.
 		Gson gson = new Gson();
 		JsonObject messageJson;
@@ -125,6 +129,10 @@ class McWsServer extends WebSocketServer {
 	@Override
 	public void onStart() {
 		LOGGER.info("Server started");
+		// Make sure the subscriber list is initialized:
+		if (subscribers == null) {
+			subscribers = new HashMap<>();
+		}
 	}
 
 	public void moduleSwitcher(String module, String mode, WebSocket conn, JsonObject message) {
@@ -182,44 +190,29 @@ class McWsServer extends WebSocketServer {
 		}
 	}
 
-	public void keepalive() {
-		//skip if no one connected:
-		if (this.getConnections().isEmpty()) {
-			LOGGER.debug("No one connected. Skipping keepalive broadcast.");
-			return;
-		}
-		this.broadcast(new JsonMessageBuilder("keepalive=true").toJson());
-	}
-
 	public void subscriberBroadcast(String module) {
 		//skip if no one connected:
 		if (this.getConnections().isEmpty()) {
-			LOGGER.debug("No one connected. Skipping subscriber broadcast.");
+			if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+				LOGGER.info("No one connected. Skipping subscriber broadcast.");
+			}
 			return;
 		}
 		// If Module == null then broadcast all enabled modules.
-		if (module == null) {
-			//get all modules that are configured to be broadcast:
-			Map<String, String> modules = McWebsocketServerConfig.INSTANCE.broadcastModules.value();
-			for (Map.Entry<String, String> entry : modules.entrySet()) {
-				if (entry.getValue().equals("true")) {
-					//get all subscribers for this module:
-					List<WebSocket> currentSubscribers = subscribers.get(entry.getKey());
-					for (WebSocket subscriber : currentSubscribers) {
-						subscriber.send(entry.getKey() + " Subscriber Broadcast");
-					}
+		try {
+			//check if module has subscribers:
+			if (!subscribers.containsKey(module) || subscribers.get(module).isEmpty()) {
+				if (McWebsocketServerConfig.INSTANCE.debug.value()) {
+					LOGGER.info("No subscribers for module: " + module);
 				}
+				return;
 			}
-		} else {
-			//get all subscribers for this module:
-			try {
-				List<WebSocket> currentSubscribers = subscribers.get(module);
-				for (WebSocket subscriber : currentSubscribers) {
-					subscriber.send(module + " Subscriber Broadcast");
-				}
-			} catch (Exception e) {
-				LOGGER.error("Error while broadcasting to subscribers", e);
+			List<WebSocket> currentSubscribers = subscribers.get(module);
+			for (WebSocket subscriber : currentSubscribers) {
+				moduleSwitcher(module, "once", subscriber, null);
 			}
+		} catch (Exception e) {
+			LOGGER.error("Error while broadcasting to subscribers", e);
 		}
 	}
 
