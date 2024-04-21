@@ -52,7 +52,7 @@ dependencies {
 	// modImplementation libs.bundles.quilted.fabric.api // If you wish to use Fabric API's deprecated modules, you can replace the above line with this one
 
 	// Add your dependencies here. Remember to use the "libs.<id>" syntax.
-	implementation libs.java.websocket
+	include(implementation("org.java-websocket:Java-WebSocket:1.5.6"))
 }
 
 processResources {
