@@ -93,21 +93,22 @@ class McWsServer extends WebSocketServer {
 			LOGGER.info("Message: " + message);
 			return;
 		}
-		String module, mode;
-		try {
-			module = messageJson.get("module").getAsString(); // Get the module name.
-		} catch (Exception e) {
-			LOGGER.info("Error while getting module name from message.", e);
+		// Check if the message contains the module name.
+		if (!messageJson.has("module")) {
+			LOGGER.info("Message does not contain module name.");
 			LOGGER.info("Message: " + message);
+			conn.send(new JsonMessageBuilder("success=false,error=Incomplete Request.").toJson());
 			return;
 		}
-		try {
-			mode = messageJson.get("mode").getAsString(); // Get the mode.
-		} catch (Exception e) {
-			LOGGER.info("Error while getting mode from message.", e);
+		// Check if the message contains the mode.
+		if (!messageJson.has("mode")) {
+			LOGGER.info("Message does not contain mode.");
 			LOGGER.info("Message: " + message);
-			mode = "once"; // Default mode.
+			conn.send(new JsonMessageBuilder("success=false,error=Incomplete Request.").toJson());
+			return;
 		}
+		String module = messageJson.get("module").getAsString(); // Get the module name.
+		String mode = messageJson.get("mode").getAsString(); // Get the mode.
 		//check if module is enabled:
 		boolean enabled = Boolean.parseBoolean(McWebsocketServerConfig.INSTANCE.modules.value().get(module));
 		if (enabled) {
